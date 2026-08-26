@@ -821,6 +821,22 @@ async function handleMasukSubmit(e){
   const clash = regisRaw.find(reg => regisAlreadyUsedElsewhere(reg));
   if(clash){ errEl.textContent = `No. registrasi "${clash}" sudah tercatat sebelumnya di Real Stok`; return; }
 
+  // Konsistensi penting: begitu kode ini dilacak per REGIS, Stok Akhir HARUS selalu sama
+  // dengan panjang daftar REGIS-nya — supaya Barang Keluar (berbasis REGIS) tidak pernah
+  // mengurangi/menghitung dari angka yang berbeda sumbernya. Karena itu:
+  const existingRow = getRealStokRow(kode);
+  const existingStock = existingRow ? (Number(existingRow.STOCK_AKHIR) || 0) : 0;
+  const wasTracked = isRegisTracked(kode);
+
+  if(wasTracked && regisRaw.length === 0){
+    errEl.textContent = `Kode "${kode}" sudah dilacak per unit — isi No. Registrasi untuk tiap unit yang masuk (Jumlah tidak dipakai untuk kode ini).`;
+    return;
+  }
+  if(!wasTracked && regisRaw.length > 0 && existingStock > 0){
+    errEl.textContent = `Kode "${kode}" masih punya ${fmtNum(existingStock)} unit stok lama yang belum tercatat per REGIS. Kosongkan No. Registrasi untuk menambah sebagai stok biasa (aman), atau hubungi admin dulu untuk memigrasikan stok lama ke REGIS sebelum mulai melacak per unit.`;
+    return;
+  }
+
   let jumlah;
   if(regisRaw.length){
     jumlah = regisRaw.length;
@@ -867,10 +883,12 @@ async function handleMasukSubmit(e){
 }
 
 function wireMasuk(){
+  const kodeInput = document.getElementById('masukKode');
   const jumlahInput = document.getElementById('masukJumlah');
   const regisTextarea = document.getElementById('masukRegisUnit');
   const hint = document.getElementById('masukRegisHint');
   function syncJumlahFromRegis(){
+    const kode = (kodeInput.value || '').trim().toUpperCase();
     const lines = (regisTextarea.value || '').split('\n').map(s=>s.trim()).filter(Boolean);
     if(lines.length){
       jumlahInput.value = lines.length;
@@ -880,10 +898,18 @@ function wireMasuk(){
     } else {
       jumlahInput.readOnly = false;
       jumlahInput.style.background = '';
-      hint.textContent = '';
+      if(kode && isRegisTracked(kode)){
+        const existing = regisList(kode).length;
+        hint.textContent = `Kode "${kode}" dilacak per unit (${existing} unit saat ini) — isi No. Registrasi untuk tiap unit yang masuk.`;
+        hint.style.color = 'var(--danger)';
+      } else {
+        hint.textContent = '';
+        hint.style.color = '';
+      }
     }
   }
   regisTextarea.addEventListener('input', syncJumlahFromRegis);
+  kodeInput.addEventListener('blur', syncJumlahFromRegis);
   document.getElementById('masukForm').addEventListener('submit', handleMasukSubmit);
   document.getElementById('masukCopy').addEventListener('click', ()=>{
     const rows = [...DATA.barangMasuk].reverse();
