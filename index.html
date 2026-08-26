@@ -1461,6 +1461,18 @@ function renderMaster(){
   const capped = rows.slice(0, 300);
   return `
   <div class="panel">
+    <h2>Tambah kode spek baru</h2>
+    <p class="sub">Daftarkan SKU/kode spek yang belum ada, lengkap dengan namanya, supaya langsung muncul di pencarian &amp; form Barang Masuk/Keluar.</p>
+    <form class="entry" id="masterAddForm">
+      <div class="field"><label>Kode spek</label><input type="text" name="KODE_SPEK" id="masterNewKode" placeholder="mis. B2WN9999999X" required style="text-transform:uppercase"></div>
+      <div class="field wide"><label>Nama perangkat</label><input type="text" name="NAMA_PERANGKAT" placeholder="mis. SFP+ 10G Module Merk X" required></div>
+      <div class="actions">
+        <button type="submit" class="btn primary">Tambah ke Master Kode Spek</button>
+        <span class="err" id="masterAddErr"></span>
+      </div>
+    </form>
+  </div>
+  <div class="panel">
     <h2>Master Kode Spek</h2>
     <p class="sub">Kamus referensi kode spek → nama perangkat</p>
     <div class="toolbar">
@@ -1481,8 +1493,33 @@ function renderMaster(){
   </div>
   `;
 }
+
+async function handleMasterAddSubmit(e){
+  e.preventDefault();
+  const f = e.target;
+  const errEl = document.getElementById('masterAddErr');
+  errEl.textContent = '';
+  const kode = f.KODE_SPEK.value.trim().toUpperCase();
+  const nama = f.NAMA_PERANGKAT.value.trim();
+  if(!kode){ errEl.textContent = 'Kode spek wajib diisi'; return; }
+  if(!nama){ errEl.textContent = 'Nama perangkat wajib diisi'; return; }
+  if(DATA.masterKodeSpek.some(r => (r['KODE SPEK']||'').toUpperCase() === kode)){
+    errEl.textContent = `Kode spek "${kode}" sudah terdaftar di Master Kode Spek`;
+    return;
+  }
+  DATA.masterKodeSpek.push({'KODE SPEK': kode, 'NAMA PERANGKAT': nama});
+  // Langsung munculkan juga di Real Stok dengan stok 0, supaya siap menerima Barang Masuk
+  ensureRealStokRow(kode, nama);
+  await saveState();
+  toast(`Kode spek "${kode}" ditambahkan — sekarang bisa dipakai di Barang Masuk`);
+  f.reset();
+  masterFilter = kode;
+  renderTabInto();
+}
+
 function wireMaster(){
   document.getElementById('mkSearch').addEventListener('input', e=>{ masterFilter = e.target.value; renderTabInto(); });
+  document.getElementById('masterAddForm').addEventListener('submit', handleMasterAddSubmit);
 }
 
 // ---------- datalist for kode spek autocomplete ----------
