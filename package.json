@@ -1,0 +1,9 @@
+{
+  "name": "monitoring-stok-tools-tbs-tcn",
+  "version": "1.3.0",
+  "private": true,
+  "description": "Sistem Manajemen & Monitoring Stok Perangkat/Tools TBS TCN — versi web yang datanya dibagikan ke semua pengguna lewat Upstash Redis.",
+  "dependencies": {
+    "@upstash/redis": "^1.34.3"
+  }
+}
